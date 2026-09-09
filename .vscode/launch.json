@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter Web (Server)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "deviceId": "web-server",
+      "args": [
+        "--web-port", "5000",
+        "--web-hostname", "0.0.0.0"
+      ]
+    },
+    {
+      "name": "Flutter Web (Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "deviceId": "chrome",
+      "args": [
+        "--web-port", "5000",
+        "--web-browser-flag=--headless=new",
+        "--web-browser-flag=--no-sandbox",
+        "--web-browser-flag=--disable-setuid-sandbox",
+        "--web-browser-flag=--disable-dev-shm-usage",
+        "--web-browser-flag=--disable-gpu"
+      ]
+    }
+  ]
+}

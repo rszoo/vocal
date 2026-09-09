@@ -1,0 +1,116 @@
+# Music Learning App
+
+Flutter で作る音楽学習モバイルアプリの最小構成です。
+
+## 実装内容
+
+- `assets/pitches/` にある `.json` を `AssetManifest` から列挙し、ファイル名を YouTube の動画 ID として画面に表示。
+- 選択した動画 ID を `youtube_player_iframe` で再生。
+- 選択した JSON の `time_s / duration / f0_hz` からピアノロールを描画。
+- YouTube の現在再生時間を 100ms 周期で取得し、再生位置とピアノロールを同期。
+- マイクをオンにすると PCM16 ストリームを取得し、自己相関によるピッチ推定を実行。
+- マイクの推定ピッチを現在の YouTube 再生時間へ重ねて、参照ピッチとの音高差をセント単位で比較。
+- 一致したマイク音は `MATCH` 表示と別色のノートバーで表示。
+- オーディオ波形表示はヘッダーの波形アイコンで ON/OFF。
+
+## JSON の前提
+
+添付サンプルは以下の 3 項目だけを持つ配列です。
+
+```json
+{
+  "time_s": 27.362,
+  "duration": 0.421,
+  "f0_hz": 277.18
+}
+```
+
+そのため、サンプル JSON から取得できるのは「発音時刻・長さ・基本周波数」であり、元音源の PCM 波形データはありません。
+
+この実装では、波形パネルの参照側を `f0_hz` から作った参照信号の包絡として描画し、マイク側は実際の PCM 入力を波形として描画しています。元音源そのものの実波形を出したい場合は、JSON に振幅サンプル列を追加するか、別音声ファイルを用意してください。
+
+## セットアップ
+
+```bash
+flutter create . --platforms=android,ios
+flutter pub get
+flutter run
+```
+
+このディレクトリの `lib/` と `assets/` を Flutter プロジェクトへ配置してください。
+
+## Android 設定
+
+`android/app/src/main/AndroidManifest.xml` の `<manifest>` 直下に追加:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
+
+`record` 7.x を使うため、Android の min SDK は 23 以上を前提にしてください。
+
+## iOS 設定
+
+`ios/Runner/Info.plist` の `<dict>` 内に追加:
+
+```xml
+<key>NSMicrophoneUsageDescription</key>
+<string>音程の練習結果を表示するためにマイクを使用します。</string>
+```
+
+iOS の deployment target は `record` の対象バージョンに合わせて設定してください。
+
+## 依存パッケージ
+
+- `youtube_player_iframe: ^6.0.2`
+- `record: ^7.1.1`
+
+## 実装上の注意
+
+### 動画 ID と JSON
+
+`assets/pitches/A1b2C3d4.json` があると、動画 ID `A1b2C3d4` として一覧に出ます。
+実行時にファイルシステムを直接走査するのではなく、Flutter のアセットマニフェストを利用しています。
+
+### ピアノロールの音域
+
+サンプルに合わせて C2 (MIDI 36) から C7 (MIDI 96) を表示しています。
+
+### 再生ヘッド
+
+表示領域の左 20% に再生ヘッドを固定し、現在の YouTube 再生時刻がその位置に来るように可視時間範囲を移動させています。
+
+### 小節表示
+
+サンプル JSON にテンポや拍子の情報がないため、コードでは `120 BPM / 4 拍子` を既定値にしています。
+実データのテンポが分かっている場合は `lib/widgets/piano_roll.dart` の `_tempoBpm` と `_beatsPerMeasure` を変更してください。
+
+### マイク同期
+
+このサンプルでは、YouTube が再生中のときにマイクフレームを「その時点の YouTube 再生時間」に割り当てます。ユーザーがシークした場合も、以後のマイク入力は新しい再生位置へ描画されます。
+
+### ピッチ推定
+
+ピッチ検出は一般的な自己相関法を使っています。録音環境、雑音、声質、同時発音数によって誤検出するため、和音や強い伴奏を対象にする場合は YIN / pYIN / FFT ベースの推定器へ差し替えると改善できます。
+
+## ファイル構成
+
+```text
+lib/
+  main.dart
+  models/
+    live_audio_frame.dart
+    pitch_event.dart
+  services/
+    microphone_service.dart
+    pitch_asset_service.dart
+    pitch_detector.dart
+    pitch_matcher.dart
+  widgets/
+    piano_roll.dart
+    waveform_view.dart
+assets/
+  pitches/
+    V0xSlwow9rQ.json
+```
