@@ -1,44 +1,60 @@
 // ./lib/vocal/domain/models.dart
 
-enum PianoRollDisplayMode { fullRange, singleOctave }
+import '../../feature/monophony.dart';
 
-class PitchEvent {
-  const PitchEvent({
-    required this.startSeconds,
-    required this.durationSeconds,
-    required this.f0Hz,
-  });
+enum PianoRangeMode {
+  real('実音'),
+  tone('楽音');
 
-  final double startSeconds;
-  final double durationSeconds;
-  final double f0Hz;
-
-  double get endSeconds => startSeconds + durationSeconds;
-
-  factory PitchEvent.fromJson(Map<String, dynamic> json) {
-    return PitchEvent(
-      startSeconds: (json['time_s'] as num).toDouble(),
-      durationSeconds: (json['duration'] as num).toDouble(),
-      f0Hz: (json['f0_hz'] as num).toDouble(),
-    );
-  }
+  final String label;
+  const PianoRangeMode(this.label);
 }
 
-class LivePitch {
-  const LivePitch({
-    required this.timeSeconds,
-    required this.frequencyHz,
-    required this.confidence,
-  });
+enum MicStatus {
+  off('OFF'),
+  listen('LISTEN'),
+  match('MATCH'),
+  permission('PERMISSION');
 
-  final double timeSeconds;
-  final double frequencyHz;
-  final double confidence;
+  final String label;
+  const MicStatus(this.label);
 }
 
-class WaveformSample {
-  const WaveformSample({required this.timeSeconds, required this.amplitude});
+/// 1 フレーム分のマイク推定結果
+extension type LivePitchSample(
+  ({
+    double time,
+    double frequency,
+    // double confidence,
+    List<double> waveform,
+    double? referenceFrequency,
+    double? cents,
+    bool match,
+  })
+  _
+) {
+  LivePitchSample.from({
+    required double time,
+    required double frequency,
+    required List<double> waveform,
+    double? referenceFrequency,
+    double? cents,
+    required bool match,
+  }) : _ = (
+         time: time,
+         frequency: frequency,
+         waveform: waveform,
+         referenceFrequency: referenceFrequency,
+         cents: cents,
+         match: match,
+       );
 
-  final double timeSeconds;
-  final double amplitude;
+  double get time => _.time;
+  double get frequency => _.frequency;
+  List<double> get waveform => _.waveform;
+  double? get referenceFrequency => _.referenceFrequency;
+  double? get cents => _.cents;
+  bool get match => _.match;
+
+  Midi get midi => convertF0ToMidi(frequency);
 }

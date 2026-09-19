@@ -1,9 +1,8 @@
-import 'dart:async';
+// ./lib/voice/presentation/screens.dart
 
 import 'package:flutter/material.dart';
 
-import '../domain/models.dart';
-import '../infrastructure/services.dart';
+import '../infrastructure/classes.dart';
 
 class WarmUpScreen extends StatefulWidget {
   const WarmUpScreen({super.key});
@@ -13,97 +12,60 @@ class WarmUpScreen extends StatefulWidget {
 }
 
 class _WarmUpScreenState extends State {
-  late final PitchDetector _detector;
-  StreamSubscription<PitchResult?>? _subscription;
+  late final MicImpl _microphone;
   bool _microphoneOn = false;
-  PitchResult? _result;
 
   @override
   void initState() {
     super.initState();
-
-    _detector = PitchDetector();
-    _subscription = _detector.results.listen((result) {
-      if (!mounted) return;
-
-      setState(() {
-        _result = result;
-      });
-    });
+    _microphone = MicImpl();
   }
 
   @override
   void dispose() {
-    _subscription?.cancel();
-    _detector.dispose();
+    _microphone.dispose();
     super.dispose();
   }
 
   Future<void> _onMicrophoneChanged(bool value) async {
+    bool nextState = false;
+
     if (value) {
-      final success = await _detector.start();
-      if (!mounted) return;
-
-      if (success) {
-        setState(() {
-          _microphoneOn = true;
-        });
-      } else {
-        setState(() {
-          _microphoneOn = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'マイクを使用できません。'
-              '権限を確認してください。',
-            ),
-          ),
-        );
-      }
+      nextState = await _microphone.start();
     } else {
-      await _detector.stop();
-      if (!mounted) return;
-
-      setState(() {
-        _microphoneOn = false;
-        _result = null;
-      });
+      await _microphone.stop();
     }
+
+    if (!mounted) return;
+
+    if (value && !nextState) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'マイクを使用できません。'
+            '権限を確認してください。',
+          ),
+        ),
+      );
+    }
+
+    setState(() {
+      _microphoneOn = nextState;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final result = _result;
-
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
-
-    // チューニング状態に応じた色をThemeDataから決定
-    Color tuningColor;
-    if (result == null) {
-      tuningColor = colorScheme.onSurfaceVariant;
-    } else if (result.isInTune) {
-      tuningColor = colorScheme.primary;
-    } else {
-      tuningColor = colorScheme.error;
-    }
-
     return SafeArea(
       child: Center(
-        // 画面幅が広い場合に広がりすぎるのを防ぎ、中央に配置する
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
           child: Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
             child: Column(
               children: [
                 _buildToolbar(context),
-
                 const SizedBox(height: 16),
-
                 Expanded(child: _buildTunerDisplay(context)),
               ],
             ),
@@ -126,7 +88,6 @@ class _WarmUpScreenState extends State {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        // mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Icon(_microphoneOn ? Icons.mic : Icons.mic_off),
           const SizedBox(width: 12),
@@ -140,21 +101,8 @@ class _WarmUpScreenState extends State {
 
   /// ノート、セント等
   Widget _buildTunerDisplay(BuildContext context) {
-    final result = _result;
-
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
-
-    // チューニング状態に応じた色をThemeDataから決定
-    Color tuningColor;
-    if (result == null) {
-      tuningColor = colorScheme.onSurfaceVariant;
-    } else if (result.isInTune) {
-      tuningColor = colorScheme.primary;
-    } else {
-      tuningColor = colorScheme.error;
-    }
 
     return Container(
       width: double.infinity,
@@ -163,42 +111,52 @@ class _WarmUpScreenState extends State {
         border: Border.all(color: colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        // mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // ドレミ
-          Text(result?.note ?? '--', style: textTheme.displayLarge),
-          const SizedBox(height: 8),
+      child: StreamBuilder(
+        stream: _microphone.stream,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Text('エラー: ${snapshot.error}');
+          }
 
-          Text(
-            result == null ? ' ' : 'MIDI ${result.midiNote}',
-            style: textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
+          final textTheme = theme.textTheme;
+          final result = snapshot.data;
+          final tuningColor = switch (result) {
+            null => colorScheme.onSurfaceVariant,
+            var r when r.isInTune => colorScheme.primary,
+            _ => colorScheme.error,
+          };
 
-          const SizedBox(height: 32),
-
-          // 周波数
-          Text(
-            result == null
-                ? '-- Hz'
-                : '${result.frequency.toStringAsFixed(2)} Hz',
-            style: textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 12),
-
-          // cents
-          Text(
-            result?.tuningText ?? ' ',
-            style: textTheme.titleMedium?.copyWith(color: tuningColor),
-          ),
-
-          const SizedBox(height: 48),
-
-          // チューナーメーター
-          Column(
+          return Column(
             children: [
+              // ドレミ
+              Text(result?.note ?? '--', style: textTheme.displayLarge),
+              const SizedBox(height: 8),
+
+              Text(
+                result != null ? 'MIDI ${result.midiNote}' : ' ',
+                style: textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // 周波数
+              Text(
+                '${result != null ? result.pitch.toStringAsFixed(2) : '--'} Hz',
+                style: textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 12),
+
+              // cents
+              Text(
+                result?.tuningText ?? ' ',
+                style: textTheme.titleMedium?.copyWith(color: tuningColor),
+              ),
+
+              const Spacer(),
+
+              // チューナーメーター
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -228,7 +186,9 @@ class _WarmUpScreenState extends State {
                       ),
                     ),
                     if (result != null)
-                      Align(
+                      AnimatedAlign(
+                        duration: const Duration(milliseconds: 100),
+                        curve: Curves.easeOutCubic,
                         alignment: Alignment(
                           (result.cents / 50).clamp(-1.0, 1.0),
                           0,
@@ -246,8 +206,8 @@ class _WarmUpScreenState extends State {
                 ),
               ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }

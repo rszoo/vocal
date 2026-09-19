@@ -1,19 +1,11 @@
 {
+  // IntelliSense を使用して利用可能な属性を学べます。
+  // 既存の属性の説明をホバーして表示します。
+  // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Flutter Web (Server)",
-      "request": "launch",
-      "type": "dart",
-      "flutterMode": "debug",
-      "deviceId": "web-server",
-      "args": [
-        "--web-port", "5000",
-        "--web-hostname", "0.0.0.0"
-      ]
-    },
-    {
-      "name": "Flutter Web (Chrome)",
+      "name": "Flutter web (Chrome)",
       "request": "launch",
       "type": "dart",
       "flutterMode": "debug",
@@ -25,7 +17,24 @@
         "--web-browser-flag=--disable-setuid-sandbox",
         "--web-browser-flag=--disable-dev-shm-usage",
         "--web-browser-flag=--disable-gpu"
-      ]
-    }
+      ],
+    },
+    {
+      "name": "Flutter app",
+      "request": "launch",
+      "type": "dart",
+    },
+    {
+      "name": "Flutter app (profile mode)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile",
+    },
+    {
+      "name": "Flutter app (release mode)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release",
+    },
   ]
 }

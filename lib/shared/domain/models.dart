@@ -1,25 +1,43 @@
-import 'dart:math' as math;
+// ./lib/shared/domain/models.dart
 
-/// ピッチ
-class PitchSegment {
+import 'package:collection/collection.dart';
+
+import '../../feature/monophony.dart';
+
+/// 参照側のピッチ区間
+extension type PitchSegment._(({double time, T0 period, F0 freq}) _) {
   const PitchSegment({
-    required this.timeSec,
-    required this.durationSec,
-    required this.f0,
-  });
+    required double time,
+    required T0 period,
+    required F0 freq,
+  }) : _ = (time: time, period: period, freq: freq);
 
-  final double timeSec;
-  final double durationSec;
+  /// 開始位置（秒）
+  double get time => _.time;
 
-  /// 基本周波数
-  final double f0;
+  /// 時間幅（秒）
+  T0 get period => _.period;
 
-  double get endSec => timeSec + durationSec;
+  /// 基本周波数（Hz）
+  F0 get freq => _.freq;
 
-  double get midi => 69 + 12 * math.log(f0 / 440.0) / math.ln2;
+  double get endTime => time + period;
 
-  static double totalDurationSec(List<PitchSegment> pitches) {
-    if (pitches.isEmpty) return 0;
-    return pitches.map((e) => e.endSec).reduce((a, b) => a > b ? a : b);
+  /// MIDI ノート番号への変換
+  Midi get midi => convertF0ToMidi(freq);
+
+  factory PitchSegment.fromJson(Map<String, dynamic> json) {
+    return PitchSegment(
+      time: (json['time_s'] as num).toDouble(),
+      period: (json['t0_s'] as num).toDouble(),
+      freq: (json['f0_hz'] as num).toDouble(),
+    );
+  }
+}
+
+extension PitchSegmentListExt on List<PitchSegment> {
+  double get maxEndTime {
+    var e = maxBy(this, (e) => e.endTime);
+    return e != null ? e.endTime : 0;
   }
 }

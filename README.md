@@ -19,47 +19,15 @@ Flutter で作る音楽学習モバイルアプリの最小構成です。
 
 ```json
 {
-  "time_s": 27.362,
-  "duration": 0.421,
-  "f0_hz": 277.18
+  "time_s": 12.345,
+  "duration": 0.123,
+  "f0_hz": 123.45
 }
 ```
 
 そのため、サンプル JSON から取得できるのは「発音時刻・長さ・基本周波数」であり、元音源の PCM 波形データはありません。
 
 この実装では、波形パネルの参照側を `f0_hz` から作った参照信号の包絡として描画し、マイク側は実際の PCM 入力を波形として描画しています。元音源そのものの実波形を出したい場合は、JSON に振幅サンプル列を追加するか、別音声ファイルを用意してください。
-
-## セットアップ
-
-```bash
-flutter create . --platforms=android,ios
-flutter pub get
-flutter run
-```
-
-このディレクトリの `lib/` と `assets/` を Flutter プロジェクトへ配置してください。
-
-## Android 設定
-
-`android/app/src/main/AndroidManifest.xml` の `<manifest>` 直下に追加:
-
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.RECORD_AUDIO" />
-```
-
-`record` 7.x を使うため、Android の min SDK は 23 以上を前提にしてください。
-
-## iOS 設定
-
-`ios/Runner/Info.plist` の `<dict>` 内に追加:
-
-```xml
-<key>NSMicrophoneUsageDescription</key>
-<string>音程の練習結果を表示するためにマイクを使用します。</string>
-```
-
-iOS の deployment target は `record` の対象バージョンに合わせて設定してください。
 
 ## 依存パッケージ
 
@@ -99,18 +67,11 @@ iOS の deployment target は `record` の対象バージョンに合わせて�
 ```text
 lib/
   main.dart
-  models/
-    live_audio_frame.dart
-    pitch_event.dart
-  services/
-    microphone_service.dart
-    pitch_asset_service.dart
-    pitch_detector.dart
-    pitch_matcher.dart
-  widgets/
-    piano_roll.dart
-    waveform_view.dart
+  vocal/
+    classes.dart
+  voice/
+    classes.dart
 assets/
   pitches/
-    V0xSlwow9rQ.json
+    A1b2C3d4E5f.json
 ```
